@@ -19,23 +19,28 @@
  * SOFTWARE.
  */
 
-package org.firstinspires.ftc.robotcontroller.external.samples;
+package org.firstinspires.ftc.teamcode.SampleDetector;
 
 import android.util.Size;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.util.SortOrder;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor;
 import org.firstinspires.ftc.vision.opencv.ColorRange;
 import org.firstinspires.ftc.vision.opencv.ImageRegion;
 import org.opencv.core.RotatedRect;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /*
@@ -60,10 +65,21 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@Disabled
+//@Disabled
 @TeleOp(name = "Concept: Vision Color-Locator", group = "Concept")
-public class ConceptVisionColorLocator extends LinearOpMode
+public class SampleSorter extends LinearOpMode
 {
+    toPoseSample moveto =new toPoseSample(this);
+    List<ColorBlobLocatorProcessor.Blob> blobs = new ArrayList<>();
+    boolean isRed=false;
+    enum delivery {
+        Blue, Red, noDelivery
+    }
+    private Position cameraPosition = new Position(DistanceUnit.INCH,
+            0, 0, 0, 0);
+    private YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES,
+            0, -90, 0, 0);
+
     @Override
     public void runOpMode()
     {
@@ -107,18 +123,38 @@ public class ConceptVisionColorLocator extends LinearOpMode
          *                                    object, such as when removing noise from an image.
          *                                    "pixels" in the range of 2-4 are suitable for low res images.
          */
-        ColorBlobLocatorProcessor colorLocator = new ColorBlobLocatorProcessor.Builder()
-                .setTargetColorRange(ColorRange.BLUE)         // use a predefined color match
+        ColorBlobLocatorProcessor colorLocatorB = new ColorBlobLocatorProcessor.Builder()
+                .setTargetColorRange(ColorRange.BLUE)// use a predefined color match
                 .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)    // exclude blobs inside blobs
-                .setRoi(ImageRegion.asUnityCenterCoordinates(-0.5, 0.5, 0.5, -0.5))  // search central 1/4 of camera view
+                .setRoi(ImageRegion.asUnityCenterCoordinates(-0.75, 0.75, 0.75, -0.75))  // search central 1/4 of camera view
                 .setDrawContours(true)                        // Show contours on the Stream Preview
                 .setBlurSize(5)                               // Smooth the transitions between different colors in image
+                .build();
+
+        ColorBlobLocatorProcessor colorLocatorR = new ColorBlobLocatorProcessor.Builder()
+                .setTargetColorRange(ColorRange.RED)// use a predefined color match
+                .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)    // exclude blobs inside blobs
+                .setRoi(ImageRegion.asUnityCenterCoordinates(-0.75, 0.75, 0.75, -0.75))  // search central 1/4 of camera view
+                .setDrawContours(true)                        // Show contours on the Stream Preview
+                .setBlurSize(5)                               // Smooth the transitions between different colors in image
+                .build();
+
+        ColorBlobLocatorProcessor colorLocatorY = new ColorBlobLocatorProcessor.Builder()
+                .setTargetColorRange(ColorRange.YELLOW)// use a predefined color match
+                .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)    // exclude blobs inside blobs
+                .setRoi(ImageRegion.asUnityCenterCoordinates(-0.75, 0.75, 0.75, -0.75))  // search central 1/4 of camera view
+                .setDrawContours(true)                        // Show contours on the Stream Preview
+                .setBlurSize(5)                               // Smooth the transitions between different colors in image
+                .build();
+
+        AprilTagProcessor aprilTag = new AprilTagProcessor.Builder()
+                .setCameraPose(cameraPosition, cameraOrientation)
                 .build();
 
         /*
          * Build a vision portal to run the Color Locator process.
          *
-         *  - Add the colorLocator process created above.
+         *  - Add the colorLocatorB process created above.
          *  - Set the desired video resolution.
          *      Since a high resolution will not improve this process, choose a lower resolution that is
          *      supported by your camera.  This will improve overall performance and reduce latency.
@@ -128,7 +164,11 @@ public class ConceptVisionColorLocator extends LinearOpMode
          *      .setCamera(BuiltinCameraDirection.BACK)    ... for a Phone Camera
          */
         VisionPortal portal = new VisionPortal.Builder()
-                .addProcessor(colorLocator)
+                .addProcessor(colorLocatorB)
+                .addProcessor(colorLocatorR)
+                .addProcessor(aprilTag)
+
+        //.addProcessor(colorLocatorY)
                 .setCameraResolution(new Size(320, 240))
                 .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
                 .build();
@@ -136,70 +176,130 @@ public class ConceptVisionColorLocator extends LinearOpMode
         telemetry.setMsTransmissionInterval(50);   // Speed up telemetry updates, Just use for debugging.
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.MONOSPACE);
 
+        moveto.initialize();
+
+        waitForStart();
+
         // WARNING:  To be able to view the stream preview on the Driver Station, this code runs in INIT mode.
         while (opModeIsActive() || opModeInInit())
         {
             telemetry.addData("preview on/off", "... Camera Stream\n");
 
             // Read the current list
-            List<ColorBlobLocatorProcessor.Blob> blobs = colorLocator.getBlobs();
+            List<ColorBlobLocatorProcessor.Blob> blobsR = colorLocatorR.getBlobs();
+            List<ColorBlobLocatorProcessor.Blob> blobsB = colorLocatorB.getBlobs();
+            List<AprilTagDetection> currentDetections = aprilTag.getDetections();
+
 
             /*
              * The list of Blobs can be filtered to remove unwanted Blobs.
              *   Note:  All contours will be still displayed on the Stream Preview, but only those that satisfy the filter
-             *          conditions will remain in the current list of "blobs".  Multiple filters may be used.
+             *          conditions will remain in the current list of "blobsR".  Multiple filters may be used.
              *
-             * To perform a filter
-             *   ColorBlobLocatorProcessor.Util.filterByCriteria(criteria, minValue, maxValue, blobs);
+             * Use any of the following filters.
              *
-             * The following criteria are currently supported.
-             *
-             * ColorBlobLocatorProcessor.BlobCriteria.BY_CONTOUR_AREA
+             * ColorBlobLocatorProcessor.Util.filterByArea(minArea, maxArea, blobsR);
              *   A Blob's area is the number of pixels contained within the Contour.  Filter out any that are too big or small.
              *   Start with a large range and then refine the range based on the likely size of the desired object in the viewfinder.
              *
-             * ColorBlobLocatorProcessor.BlobCriteria.BY_DENSITY
+             * ColorBlobLocatorProcessor.Util.filterByDensity(minDensity, maxDensity, blobsR);
              *   A blob's density is an indication of how "full" the contour is.
              *   If you put a rubber band around the contour you would get the "Convex Hull" of the contour.
              *   The density is the ratio of Contour-area to Convex Hull-area.
              *
-             * ColorBlobLocatorProcessor.BlobCriteria.BY_ASPECT_RATIO
+             * ColorBlobLocatorProcessor.Util.filterByAspectRatio(minAspect, maxAspect, blobsR);
              *   A blob's Aspect ratio is the ratio of boxFit long side to short side.
              *   A perfect Square has an aspect ratio of 1.  All others are > 1
-             *
-             * ColorBlobLocatorProcessor.BlobCriteria.BY_ARC_LENGTH
-             *   A blob's arc length is the perimeter of the blob.
-             *   This can be used in conjunction with an area filter to detect oddly shaped blobs.
-             *
-             * ColorBlobLocatorProcessor.BlobCriteria.BY_CIRCULARITY
-             *   A blob's circularity is how circular it is based on the known area and arc length.
-             *   A perfect circle has a circularity of 1.  All others are < 1
              */
-            ColorBlobLocatorProcessor.Util.filterByCriteria(
-                    ColorBlobLocatorProcessor.BlobCriteria.BY_CONTOUR_AREA,
-                    50, 20000, blobs);  // filter out very small blobs.
 
+            ColorBlobLocatorProcessor.Util.filterByArea(500, 20000, blobsR);  // filter out very small blobsR.
+            ColorBlobLocatorProcessor.Util.filterByArea(500, 20000, blobsB);  // filter out very small blobsR.
+
+
+            // Step through the list of detections and display info for each one.
+            for (AprilTagDetection detection : currentDetections) {
+                if (detection.metadata != null) {
+                    telemetry.addLine(String.format("\n==== (ID %d) %s", detection.id, detection.metadata.name));
+                    telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
+                    telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
+                    telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
+                } else {
+                    telemetry.addLine(String.format("\n==== (ID %d) Unknown", detection.id));
+                    telemetry.addLine(String.format("Center %6.0f %6.0f   (pixels)", detection.center.x, detection.center.y));
+                }
+            }   // end for() loop
+            telemetry.update();
             /*
              * The list of Blobs can be sorted using the same Blob attributes as listed above.
              * No more than one sort call should be made.  Sorting can use ascending or descending order.
-             *     ColorBlobLocatorProcessor.Util.sortByCriteria(ColorBlobLocatorProcessor.BlobCriteria.BY_CONTOUR_AREA SortOrder.DESCENDING, blobs); // Default
-             *     ColorBlobLocatorProcessor.Util.sortByCriteria(ColorBlobLocatorProcessor.BlobCriteria.BY_DENSITY SortOrder.DESCENDING, blobs);
-             *     ColorBlobLocatorProcessor.Util.sortByCriteria(ColorBlobLocatorProcessor.BlobCriteria.BY_ASPECT_RATIO SortOrder.DESCENDING, blobs);
-             *     ColorBlobLocatorProcessor.Util.sortByCriteria(ColorBlobLocatorProcessor.BlobCriteria.BY_ARC_LENGTH SortOrder.DESCENDING, blobs);
-             *     ColorBlobLocatorProcessor.Util.sortByCriteria(ColorBlobLocatorProcessor.BlobCriteria.BY_CIRCULARITY SortOrder.DESCENDING, blobs);
+             *     ColorBlobLocatorProcessor.Util.sortByArea(SortOrder.DESCENDING, blobsR);      // Default
+             *     ColorBlobLocatorProcessor.Util.sortByDensity(SortOrder.DESCENDING, blobsR);
+             *     ColorBlobLocatorProcessor.Util.sortByAspectRatio(SortOrder.DESCENDING, blobsR);
              */
 
-            telemetry.addLine("Area Density Aspect Arc Circle Center");
+            delivery run = delivery.noDelivery;
+            if (blobsR.size()!=0){
+                blobs.clear();
+                blobs.addAll(blobsR);
+                run = delivery.Red;
+            }else{
+                blobs.clear();
+                blobs.addAll(blobsB);
+                run = delivery.Blue;
+            }
+
+            if(gamepad1.b){
+
+            telemetry.addLine(" Area Density Aspect Angle  Center");
 
             // Display the size (area) and center location for each Blob.
             for(ColorBlobLocatorProcessor.Blob b : blobs)
             {
+
                 RotatedRect boxFit = b.getBoxFit();
-                telemetry.addLine(String.format("%5d  %4.2f  %5.2f %3d %5.3f (%3d,%3d)",
-                          b.getContourArea(), b.getDensity(), b.getAspectRatio(), (int) b.getArcLength(), b.getCircularity(), (int) boxFit.center.x, (int) boxFit.center.y));
+                double myContourAngle = boxFit.angle;
+                if (boxFit.size.width < boxFit.size.height) {
+                    myContourAngle = myContourAngle - 90;
+                }
+
+                telemetry.addLine(String.format("%5d  %4.2f   %5.2f %4.2f  (%3d,%3d)",
+                          b.getContourArea(), b.getDensity(), b.getAspectRatio(), myContourAngle, (int) boxFit.center.x, (int) boxFit.center.y));
+
+            }
+                telemetry.update();
             }
 
-            telemetry.update();
+            if(gamepad1.y && blobs.size()>0 ) {
+    // Below code is to pick the sample
+                RotatedRect boxFit = blobs.get(0).getBoxFit();
+                double angle = boxFit.angle;
+                if (boxFit.size.width < boxFit.size.height) {
+                    angle = angle - 90;
+                }
+
+                if(moveto.pickSample(boxFit.center.x,boxFit.center.y,angle)){
+
+    // Below code is to deliver the sample
+                    switch (run) {
+                        case Blue:
+                            moveto.deliverBlue();
+                            sleep(20);
+                            break;
+                        case Red:
+                            moveto.deliverRed();
+                            sleep(20);
+                            break;
+                        case noDelivery:
+                    }
+                }
+                moveto.home();
+            }
+
+            if(gamepad1.a) moveto.home();
+            if(gamepad1.x) moveto.setCloseClaw();
+
+            //moveto.printCrtPose();
+
             sleep(50);
         }
     }

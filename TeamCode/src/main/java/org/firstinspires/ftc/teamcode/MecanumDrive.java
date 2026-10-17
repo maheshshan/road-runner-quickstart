@@ -58,19 +58,29 @@ public final class MecanumDrive {
         // TODO: fill in these values based on
         //   see https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html?highlight=imu#physical-hub-mounting
         public RevHubOrientationOnRobot.LogoFacingDirection logoFacingDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT;
         public RevHubOrientationOnRobot.UsbFacingDirection usbFacingDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
+                RevHubOrientationOnRobot.UsbFacingDirection.UP;
 
         // drive model parameters
-        public double inPerTick = 1;
-        public double lateralInPerTick = inPerTick;
-        public double trackWidthTicks = 0;
+        public double inPerTick = 0.00295945546019532406037289138798;
+<<<<<<< HEAD
+        public double lateralInPerTick = 0.002511751409627275;
+        public double trackWidthTicks = 5079.669522436731;//293687.93565238186;
 
         // feedforward parameters (in tick units)
-        public double kS = 0;
-        public double kV = 0;
-        public double kA = 0;
+        public double kS = 0.6511529599762951;
+        public double kV = 0.0005461779800445;
+        public double kA = 0.0001;// 0.000075;
+=======
+        public double lateralInPerTick = 0.0021585603514199625;
+        public double trackWidthTicks = 3939.727055318805;
+
+        // feedforward parameters (in tick units)
+        public double kS = 0.8228379603399874;
+        public double kV = 0.0005573898089181827;
+        public double kA = 0.0001;
+>>>>>>> af601eb0645cf0da67a66f00de96a539e110d13b
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50;
@@ -82,13 +92,19 @@ public final class MecanumDrive {
         public double maxAngAccel = Math.PI;
 
         // path controller gains
-        public double axialGain = 0.0;
-        public double lateralGain = 0.0;
-        public double headingGain = 0.0; // shared with turn
+<<<<<<< HEAD
+        public double axialGain = 1.5;
+        public double lateralGain = 1.5;
+        public double headingGain = 2.0; // shared with turn
+=======
+        public double axialGain = 4.0;
+        public double lateralGain = 3.0;
+        public double headingGain = 3.0; // shared with turn
+>>>>>>> af601eb0645cf0da67a66f00de96a539e110d13b
 
-        public double axialVelGain = 0.0;
-        public double lateralVelGain = 0.0;
-        public double headingVelGain = 0.0; // shared with turn
+        public double axialVelGain = 2.0;
+        public double lateralVelGain = 2.0;
+        public double headingVelGain = 1.0; // shared with turn
     }
 
     public static Params PARAMS = new Params();
@@ -137,8 +153,11 @@ public final class MecanumDrive {
 
             imu = lazyImu.get();
 
-            // TODO: reverse encoders if needed
-            //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+            // Encoder direction configuration for correct Road Runner movement
+            leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
+            leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
+            rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
+            rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
 
             this.pose = pose;
         }
@@ -235,8 +254,19 @@ public final class MecanumDrive {
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+<<<<<<< HEAD
         // TODO: reverse motor directions if needed
-        //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightFront.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
+        leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+=======
+        // Motor direction configuration for correct Road Runner movement
+        leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
+        leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
+>>>>>>> af601eb0645cf0da67a66f00de96a539e110d13b
 
         // TODO: make sure your config has an IMU with this name (can be BNO or BHI)
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
@@ -245,7 +275,12 @@ public final class MecanumDrive {
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        localizer = new DriveLocalizer(pose);
+<<<<<<< HEAD
+        //localizer = new DriveLocalizer(pose);
+        localizer =   new PinpointLocalizer(hardwareMap, PARAMS.inPerTick, pose);
+=======
+        localizer = new PinpointLocalizer(hardwareMap, PARAMS.inPerTick, pose);
+>>>>>>> af601eb0645cf0da67a66f00de96a539e110d13b
 
         FlightRecorder.write("MECANUM_PARAMS", PARAMS);
     }
